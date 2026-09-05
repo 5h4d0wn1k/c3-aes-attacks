@@ -11,7 +11,7 @@ import struct
 import sys
 from typing import Tuple, Optional, List
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad, PaddingError
+from Crypto.Util.Padding import pad, unpad
 
 # === AES Oracles for Attack Demonstrations ===
 
@@ -38,7 +38,7 @@ class PaddingOracle:
             plaintext = cipher.decrypt(ct)
             unpad(plaintext, 16)
             return True
-        except PaddingError:
+        except (ValueError, TypeError):
             return False
         except Exception:
             return False
@@ -117,7 +117,7 @@ def padding_oracle_attack(oracle: PaddingOracle, ciphertext: bytes) -> bytes:
     
     try:
         return unpad(plaintext, 16)
-    except PaddingError:
+    except (ValueError, TypeError):
         return plaintext
 
 def demo_padding_oracle(bits: int = 128):
