@@ -1,117 +1,93 @@
-# C3 — AES Implementation + Attacks
+# C3 — AES Oracle Attacks
 
-A comprehensive toolkit for demonstrating AES vulnerabilities and attack vectors in various modes of operation.
+A real, offline suite of AES oracle attacks for **authorized security testing
+and education**. Includes a bundled pure-python AES (FIPS-197) so everything
+works with the standard library alone.
 
-## Overview
+## IMPORTANT: Read before use.
 
-This project implements various AES attacks to demonstrate cryptographic weaknesses when AES is improperly implemented or when vulnerable modes of operation are used.
+**For educational and authorized security testing purposes only.**
 
-## Features
+- Only run these attacks against your own systems or within a defined lab
+  scope (lab-* hosts, 192.0.2.x ranges, example.com) that you are authorized
+  to test.
+- Exploiting cryptographic weaknesses (padding attacks, mode misuse) without
+  authorization may violate the **Computer Fraud and Abuse Act (CFAA)** and
+  related statutes. You are solely responsible for lawful use.
+- Provided "AS IS", no warranty; the author is not liable for misuse or damage.
 
-- **Padding Oracle Attack**: Decrypts AES-CBC ciphertext without the key
-- **CBC Bitflip Attack**: Modifies ciphertext to manipulate plaintext
-- **ECB Detection**: Identifies if AES-ECB mode is being used
-- **Mode Analysis**: Detects and analyzes block cipher modes
+## What genuinely works (real mechanics)
 
-## Installation
+- **Padding Oracle attack** — recovers a full CBC plaintext byte-by-byte from a
+  local padding-validity oracle (real PKCS#7 oracle, counts queries).
+- **CBC bit-flip attack** — edits ciphertext to flip controlled plaintext bytes
+  in-place (e.g. changes `Admin=0;role=user` into `Admin=1;role=user`).
+- **ECB detection** — identifies ECB mode by duplicate ciphertext blocks and
+  distinguishes it from CBC.
 
-```bash
-pip install pycryptodome
-```
+Everything is fully offline against **local, controlled oracle
+implementations** — this is a deliberate lab design, not a real vulnerability
+you can deploy against third parties.
+
+### Pure-python AES backend
+A full AES-128/192/256 implementation (FIPS-197: S-box, key expansion,
+ShiftRows, MixColumns, AddRoundKey and their inverses) is bundled, verified
+byte-for-byte against `pycryptodome` and the FIPS-197 Appendix C known-answer
+test. If `pycryptodome` is installed it is used automatically (guarded import);
+set `C3_FORCE_PURE=1` to force the pure-python path.
+
+## Requirements
+
+- Python 3.8+ (standard library only).
+- Optional: `pycryptodome` for a faster cipher backend (guarded, not required).
 
 ## Usage
 
 ```bash
-# Padding oracle attack demonstration
-python3 aes_attacks.py padding-oracle --bits 128
-
-# CBC bitflip attack
-python3 aes_attacks.py bitflip --bits 128
-
-# ECB detection
-python3 aes_attacks.py ecb-detect
-
-# Mode analysis
-python3 aes_attacks.py mode-analysis --bits 128
-
-# Run all demonstrations
-python3 aes_attacks.py all
+python3 firmware/aes_attacks.py --help
+python3 firmware/aes_attacks.py padding-oracle
+python3 firmware/aes_attacks.py bitflip
+python3 firmware/aes_attacks.py ecb-detect
+python3 firmware/aes_attacks.py all
 ```
 
-## Attack Descriptions
+Exit code 0 only if every attack recovered/verified correctly.
 
-### Padding Oracle Attack
-Exploits CBC mode padding to decrypt ciphertext without the key. By sending modified ciphertext to an oracle that reveals padding validity, each byte of plaintext can be recovered.
+## Demo (offline, deterministic)
 
-### CBC Bitflip Attack
-Manipulates ciphertext bytes to produce predictable changes in plaintext. Flipping a ciphertext byte flips the corresponding plaintext byte in the next block.
-
-### ECB Detection
-Detects when AES-ECB mode is used by encrypting identical blocks and checking for identical ciphertext blocks. ECB is deterministic and leaks patterns.
-
-### Mode Analysis
-Analyzes encrypted data to determine which block cipher mode was used (ECB, CBC, CTR, etc.) based on statistical properties.
-
-## Example Output
-
-```
-=== C3 — AES Implementation + Attacks ===
-
-[Padding Oracle Attack]
-Target ciphertext: 4f8392a...
-Recovered plaintext: b'Secret message!'
-Bytes recovered: 16/16
-Attack SUCCESSFUL!
-
-[CBC Bitflip Attack]
-Original plaintext: b'Admin=0;role=user'
-Modified plaintext: b'Admin=1;role=admin'
-Attack SUCCESSFUL!
-
-[ECB Detection]
-Blocks analyzed: 100
-Identical blocks found: 15
-ECB mode detected: YES
+```bash
+python3 demo.py
 ```
 
-## Legal Disclaimer
+## Tests
 
-**IMPORTANT: Read before use.**
+```bash
+python3 -m unittest discover -s tests
 
-This project is provided for **educational and authorized security testing purposes only**.
+# Force the pure-python AES backend to prove stdlib-only operation
+C3_FORCE_PURE=1 python3 -m unittest discover -s tests
+```
 
-### Authorization Requirements
-- You MUST have explicit written permission from the system owner before using this tool
-- Cryptanalysis of systems you do not own or have authorization to test is illegal
-- This tool should ONLY be used on systems you own or have written authorization to test
+## Live Lab Test Plan
 
-### Legal Framework
-- **Computer Fraud and Abuse Act (CFAA)**: Unauthorized access to computer systems is a federal crime
-- **Digital Millennium Copyright Act (DMCA)**: Circumvention of technological protection measures may be illegal
-- **State Laws**: Many states have additional computer crime statutes
-- **Export Controls**: Cryptographic tools may be subject to export regulations
+1. **Offline unit tests**: `python3 -m unittest discover -s tests` — verify AES
+   correctness (FIPS-197 KAT + pycryptodome cross-check), PKCS#7, and each
+   attack against local oracles.
+2. **Pure-stdlib proof**: `C3_FORCE_PURE=1 python3 -m unittest discover -s tests`.
+3. **Offline demo**: `python3 demo.py` — all 3 attacks, exit 0.
+4. **Cross-check**: with pycryptodome installed, confirm the padding-oracle
+   result and oracle-query count are stable.
+5. **Lab scope only**: never point these attacks at real production systems or
+   third-party data without written authorization.
 
-### Acceptable Use
-- Testing security of your own cryptographic implementations
-- Authorized penetration testing with written scope
-- Academic research in controlled lab environments
-- Security education and training
-- CTF competitions and challenges
+## Metrics
 
-### Prohibited Use
-- Attacking systems you do not own or have authorization to test
-- Breaking encryption for unauthorized access
-- Any activity that violates applicable laws or regulations
-- Commercial use without proper licensing
-
-### No Warranty
-This software is provided "AS IS" without warranty of any kind. The author is not responsible for any misuse or damage caused by this software.
-
-### Responsible Disclosure
-If you discover vulnerabilities using this tool, follow responsible disclosure practices:
-1. Report to the vendor/owner privately
-2. Allow reasonable time for remediation
-3. Do not exploit beyond proof of concept
+- Attacks: **3** (padding-oracle, CBC bit-flip, ECB detection).
+- AES backend: pure-python (stdlib) with optional pycryptodome speed-up.
+- Padding oracle: full message recovery, query count reported (e.g. ~4.8k
+  queries for a 2-block message).
+- Determinism: fixed labs + stable backends produce reproducible results.
+- Reports: JSON under `reports/`, gitignored.
 
 ## License
 
