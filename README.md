@@ -6,95 +6,72 @@
 
 # C3 — AES Oracle Attacks
 
-A real, offline suite of AES oracle attacks for **authorized security testing
-and education**. Includes a bundled pure-python AES (FIPS-197) so everything
-works with the standard library alone.
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![GitHub stars](https://img.shields.io/github/stars/5h4d0wn1k/c3-aes-attacks)
+![Last commit](https://img.shields.io/github/last-commit/5h4d0wn1k/c3-aes-attacks)
+![GitHub issues](https://img.shields.io/github/issues/5h4d0wn1k/c3-aes-attacks)
 
-## IMPORTANT: Read before use.
+A real, offline suite of **AES cryptographic attack demos** — CBC padding-oracle, CBC bit-flip, and ECB-detection — against local, controlled oracles, with a bundled pure-Python AES (FIPS-197) so everything runs on the standard library alone.
 
-**For educational and authorized security testing purposes only.**
+## Why
 
-- Only run these attacks against your own systems or within a defined lab
-  scope (lab-* hosts, 192.0.2.x ranges, example.com) that you are authorized
-  to test.
-- Exploiting cryptographic weaknesses (padding attacks, mode misuse) without
-  authorization may violate the **Computer Fraud and Abuse Act (CFAA)** and
-  related statutes. You are solely responsible for lawful use.
-- Provided "AS IS", no warranty; the author is not liable for misuse or damage.
+Flawed AES modes predate real-world cryptanalysis: CBC padding oracles, bit-flips, and ECB block patterns are exactly what modern crypto auditing hunts for. This toolkit makes **cryptographic attacks** legible for authorized security testing and education — you watch a real PKCS#7 padding oracle recover a full CBC plaintext byte-by-byte, a bit-flip rewrite `Admin=0;role=user` into `Admin=1;role=user` in-place, and ECB detection pick out duplicated ciphertext blocks. Everything runs offline against **local, controlled oracle implementations**, deliberately: a lab design, not a deployable weapon. The bundled pure-python AES backend is verified byte-for-byte against FIPS-197 known-answer tests and `pycryptodome`.
 
-## What genuinely works (real mechanics)
+## Features
 
-- **Padding Oracle attack** — recovers a full CBC plaintext byte-by-byte from a
-  local padding-validity oracle (real PKCS#7 oracle, counts queries).
-- **CBC bit-flip attack** — edits ciphertext to flip controlled plaintext bytes
-  in-place (e.g. changes `Admin=0;role=user` into `Admin=1;role=user`).
-- **ECB detection** — identifies ECB mode by duplicate ciphertext blocks and
-  distinguishes it from CBC.
+- **Padding Oracle attack** — recovers full CBC plaintext byte-by-byte from a local PKCS#7 oracle with query counting.
+- **CBC bit-flip attack** — edits ciphertext to flip controlled plaintext bytes in-place.
+- **ECB detection** — identifies ECB by duplicate ciphertext blocks and distinguishes it from CBC.
+- **Pure-python AES (FIPS-197)** — S-box, key expansion, ShiftRows, MixColumns; guarded `pycryptodome` acceleration (`C3_FORCE_PURE=1` forces stdlib).
+- **JSON reports** under `reports/` (gitignored); exit `0` only if all attacks recovered/verified correctly.
 
-Everything is fully offline against **local, controlled oracle
-implementations** — this is a deliberate lab design, not a real vulnerability
-you can deploy against third parties.
-
-### Pure-python AES backend
-A full AES-128/192/256 implementation (FIPS-197: S-box, key expansion,
-ShiftRows, MixColumns, AddRoundKey and their inverses) is bundled, verified
-byte-for-byte against `pycryptodome` and the FIPS-197 Appendix C known-answer
-test. If `pycryptodome` is installed it is used automatically (guarded import);
-set `C3_FORCE_PURE=1` to force the pure-python path.
-
-## Requirements
-
-- Python 3.8+ (standard library only).
-- Optional: `pycryptodome` for a faster cipher backend (guarded, not required).
-
-## Usage
+## Quickstart
 
 ```bash
-python3 firmware/aes_attacks.py --help
+# Run all attacks against local oracles (offline demo)
+python3 demo.py
+
+# Individual attacks
 python3 firmware/aes_attacks.py padding-oracle
 python3 firmware/aes_attacks.py bitflip
 python3 firmware/aes_attacks.py ecb-detect
 python3 firmware/aes_attacks.py all
+
+# Help
+python3 firmware/aes_attacks.py --help
 ```
-
-Exit code 0 only if every attack recovered/verified correctly.
-
-## Demo (offline, deterministic)
 
 ```bash
-python3 demo.py
+# Tests (FIPS-197 KAT, PKCS#7, each attack)
+python3 -m unittest discover -s tests -v
+
+# Force pure-python AES backend to prove stdlib-only operation
+C3_FORCE_PURE=1 python3 -m unittest discover -s tests -v
 ```
 
-## Tests
+Requirements: Python 3.8+ (standard library only); optional `pycryptodome` for a faster cipher backend.
 
-```bash
-python3 -m unittest discover -s tests
+## Project structure
 
-# Force the pure-python AES backend to prove stdlib-only operation
-C3_FORCE_PURE=1 python3 -m unittest discover -s tests
+```
+c3-aes-attacks/
+├── firmware/aes_attacks.py  # attacks + bundled AES (stdlib)
+├── demo.py                  # offline demo (all 3 attacks, exit 0)
+├── tests/                   # unittest suite
+└── ETHICS.md, SCOPE.md      # authorized-use rules
 ```
 
-## Live Lab Test Plan
+## Documentation
 
-1. **Offline unit tests**: `python3 -m unittest discover -s tests` — verify AES
-   correctness (FIPS-197 KAT + pycryptodome cross-check), PKCS#7, and each
-   attack against local oracles.
-2. **Pure-stdlib proof**: `C3_FORCE_PURE=1 python3 -m unittest discover -s tests`.
-3. **Offline demo**: `python3 demo.py` — all 3 attacks, exit 0.
-4. **Cross-check**: with pycryptodome installed, confirm the padding-oracle
-   result and oracle-query count are stable.
-5. **Lab scope only**: never point these attacks at real production systems or
-   third-party data without written authorization.
+- [ETHICS.md](ETHICS.md) — authorized-use policy
+- [SCOPE.md](SCOPE.md) — lab scope
+- [SECURITY.md](SECURITY.md) — security policy
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 
-## Metrics
+## Contributing
 
-- Attacks: **3** (padding-oracle, CBC bit-flip, ECB detection).
-- AES backend: pure-python (stdlib) with optional pycryptodome speed-up.
-- Padding oracle: full message recovery, query count reported (e.g. ~4.8k
-  queries for a 2-block message).
-- Determinism: fixed labs + stable backends produce reproducible results.
-- Reports: JSON under `reports/`, gitignored.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Never point these attacks at production systems or third-party data without written authorization.
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
